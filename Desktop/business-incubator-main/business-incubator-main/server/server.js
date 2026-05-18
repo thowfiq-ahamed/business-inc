@@ -12,6 +12,15 @@ dotenv.config();
 connectDB();
 
 const app = express();
+// Force HTTPS in production
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect('https://' + req.headers.host + req.url);
+    }
+    next();
+  });
+}
 const clientDir = path.join(__dirname, '..', 'client');
 const allowedOrigins = (process.env.CLIENT_ORIGIN || '')
   .split(',')
