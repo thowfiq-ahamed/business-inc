@@ -2,7 +2,7 @@
 
 A lightweight startup incubator platform with a static HTML/CSS/JS client and an Express + MongoDB backend.
 
-#LINK: https://business-inc.onrender.com/
+LINK: https://business-inc.onrender.com/
 ## What is working
 
 - User registration and login for startup founders, mentors, and investors
