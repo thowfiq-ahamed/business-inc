@@ -1,0 +1,118 @@
+name: CI / CD → Render
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  IMAGE_NAME: business-inc
+  REGISTRY: ghcr.io
+  # ghcr.io/<your-github-username>/business-inc
+  IMAGE_FULL: ghcr.io/${{ github.repository_owner }}/business-inc
+
+jobs:
+  # ──────────────────────────────────────────────
+  # 1. Lint & basic checks
+  # ──────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server deps
+        run: npm --prefix server ci
+
+      - name: Check for vulnerabilities
+        run: npm --prefix server audit --audit-level=high
+        continue-on-error: true   # warn, don't fail the pipeline
+
+  # ──────────────────────────────────────────────
+  # 2. Build & push Docker image (main only)
+  # ──────────────────────────────────────────────
+  docker:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    needs: lint
+    # Only build/push on pushes to main, not on PRs
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      packages: write   # needed to push to GHCR
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_FULL }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=true
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ──────────────────────────────────────────────
+  # 3. Trigger Render deploy
+  # ──────────────────────────────────────────────
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Trigger Render deploy hook
+        # Store your Render deploy hook URL as a secret: RENDER_DEPLOY_HOOK_URL
+        run: |
+          curl -fsSL -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            --retry 3 --retry-delay 5
+
+      - name: Wait for deploy to go live
+        run: |
+          echo "Waiting 60 s for Render to spin up..."
+          sleep 60
+
+      - name: Smoke test — health check
+        run: |
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://business-inc.onrender.com/api/health)
+          echo "Health check status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Health check failed (HTTP $STATUS)"
+            exit 1
+          fi
+          echo "✅ Deploy successful"
