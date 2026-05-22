@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify OTP | Business Incubator</title>
+  <link rel="stylesheet" href="assets/css/main.css">
+  <style>
+    .otp-inputs {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin: 24px 0;
+    }
+    .otp-inputs input {
+      width: 48px;
+      height: 56px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .otp-inputs input:focus {
+      border-color: #4f46e5;
+    }
+    .trust-device {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #4b5563;
+    }
+    .trust-device input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    .resend-row {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 14px;
+      color: #6b7280;
+    }
+    .resend-row button {
+      background: none;
+      border: none;
+      color: #4f46e5;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0;
+      text-decoration: underline;
+    }
+    .resend-row button:disabled {
+      color: #9ca3af;
+      cursor: not-allowed;
+      text-decoration: none;
+    }
+    #countdown {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body class="site-shell auth-page">
+  <header class="site-header">
+    <nav class="navbar">
+      <div class="container">
+        <div class="navbar-brand">
+          <a href="index.html">
+            <img src="assets/images/logo.svg" alt="Business Incubator" class="logo-img">
+            <span>Business Incubator</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container auth-layout">
+    <section class="auth-panel">
+      <span class="eyebrow">Security check</span>
+      <h1>One quick step to keep your account safe.</h1>
+      <p>We sent a 6-digit code to your email. Enter it below to continue.</p>
+      <ul class="timeline-list">
+        <li>OTP expires in 10 minutes.</li>
+        <li>Trust this device to skip OTP next time.</li>
+        <li>Max 5 trusted devices per account.</li>
+      </ul>
+    </section>
+
+    <section class="auth-box">
+      <h2 id="otp-title">Verify your email</h2>
+      <p id="otp-desc">Enter the 6-digit code sent to <strong id="otp-email"></strong></p>
+
+      <div class="otp-inputs">
+        <input type="text" maxlength="1" class="otp-digit" inputmode="numeric" pattern="[0-9]">
+        <input type="text" maxlength="1" class="otp-digit" inputmode="numeric" pattern="[0-9]">
+        <input type="text" maxlength="1" class="otp-digit" inputmode="numeric" pattern="[0-9]">
+        <input type="text" maxlength="1" class="otp-digit" inputmode="numeric" pattern="[0-9]">
+        <input type="text" maxlength="1" class="otp-digit" inputmode="numeric" pattern="[0-9]">
+        <input type="text" maxlength="1" class="otp-digit" inputmode="numeric" pattern="[0-9]">
+      </div>
+
+      <div class="trust-device">
+        <input type="checkbox" id="trust-device">
+        <label for="trust-device">Trust this device — skip OTP next time on this device</label>
+      </div>
+
+      <button id="verify-btn" class="btn btn-primary" style="width:100%">Verify OTP</button>
+
+      <div class="resend-row">
+        Didn't receive it?
+        <button id="resend-btn" disabled>Resend OTP (<span id="countdown">60</span>s)</button>
+      </div>
+
+      <div id="error-message" class="error-message notice error"></div>
+    </section>
+  </main>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const email = params.get('email');
+    const purpose = params.get('purpose') || 'verify';
+
+    if (!email) window.location.href = 'login.html';
+
+    document.getElementById('otp-email').textContent = email;
+    if (purpose === 'login') {
+      document.getElementById('otp-title').textContent = 'Login verification';
+      document.getElementById('otp-desc').innerHTML = `Enter the 6-digit code sent to <strong>${email}</strong>`;
+    }
+
+    // OTP digit inputs — auto advance and backspace
+    const digits = document.querySelectorAll('.otp-digit');
+    digits.forEach((input, index) => {
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/[^0-9]/g, '');
+        if (input.value && index < digits.length - 1) {
+          digits[index + 1].focus();
+        }
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !input.value && index > 0) {
+          digits[index - 1].focus();
+        }
+      });
+      input.addEventListener('paste', (e) => {
+        const pasted = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+        if (pasted.length === 6) {
+          e.preventDefault();
+          digits.forEach((d, i) => { d.value = pasted[i] || ''; });
+          digits[5].focus();
+        }
+      });
+    });
+
+    function getOtp() {
+      return Array.from(digits).map(d => d.value).join('');
+    }
+
+    // Countdown timer for resend
+    let countdown = 60;
+    const countdownEl = document.getElementById('countdown');
+    const resendBtn = document.getElementById('resend-btn');
+    const timer = setInterval(() => {
+      countdown--;
+      countdownEl.textContent = countdown;
+      if (countdown <= 0) {
+        clearInterval(timer);
+        resendBtn.disabled = false;
+        resendBtn.textContent = 'Resend OTP';
+      }
+    }, 1000);
+
+    // Verify OTP
+    document.getElementById('verify-btn').addEventListener('click', async () => {
+      const otp = getOtp();
+      const trustDevice = document.getElementById('trust-device').checked;
+      const errorDiv = document.getElementById('error-message');
+      errorDiv.classList.remove('show');
+
+      if (otp.length !== 6) {
+        errorDiv.textContent = 'Please enter all 6 digits.';
+        errorDiv.classList.add('show');
+        return;
+      }
+
+      try {
+        const response = await api.post('/auth/verify-otp', { email, otp, trustDevice });
+
+        // Save device token if trusted
+        if (trustDevice && response.deviceToken) {
+          localStorage.setItem('deviceToken', response.deviceToken);
+        }
+
+        api.setToken(response.token);
+        api.setCurrentUser(response.user);
+        window.location.href = response.user.role === 'admin' ? 'admin.html' : 'dashboard.html';
+      } catch (error) {
+        errorDiv.textContent = error.message || 'Invalid OTP. Please try again.';
+        errorDiv.classList.add('show');
+      }
+    });
+
+    // Resend OTP
+    resendBtn.addEventListener('click', async () => {
+      const errorDiv = document.getElementById('error-message');
+      try {
+        await api.post('/auth/resend-otp', { email, purpose });
+        resendBtn.disabled = true;
+        countdown = 60;
+        countdownEl.textContent = countdown;
+        resendBtn.textContent = `Resend OTP (${countdown}s)`;
+        const newTimer = setInterval(() => {
+          countdown--;
+          countdownEl.textContent = countdown;
+          if (countdown <= 0) {
+            clearInterval(newTimer);
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend OTP';
+          }
+        }, 1000);
+        errorDiv.textContent = 'OTP resent successfully!';
+        errorDiv.style.color = 'green';
+        errorDiv.classList.add('show');
+      } catch (error) {
+        errorDiv.textContent = error.message || 'Failed to resend OTP.';
+        errorDiv.classList.add('show');
+      }
+    });
+  </script>
+</body>
+</html>

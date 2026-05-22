@@ -1,0 +1,214 @@
+.funding-filters {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.startups-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+
+.startup-card-item {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(18, 32, 51, 0.08);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  cursor: pointer;
+}
+
+.startup-card-item:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.startup-card-item.featured {
+  border-color: rgba(255, 179, 66, 0.7);
+}
+
+.startup-header {
+  padding: 1.2rem;
+  background: linear-gradient(165deg, rgba(18, 59, 168, 0.96), rgba(14, 165, 164, 0.84));
+  color: #fff;
+}
+
+.startup-header-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.startup-chip,
+.startup-stage-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.startup-logo {
+  width: 66px;
+  height: 66px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.2);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 0.9rem;
+}
+
+.startup-title {
+  font-size: 1.6rem;
+  line-height: 1.05;
+}
+
+.startup-industry,
+.startup-meta-item {
+  font-family: Arial, Helvetica, sans-serif;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.startup-industry {
+  margin: 0.35rem 0;
+}
+
+.startup-body {
+  padding: 1.2rem;
+}
+
+.startup-description {
+  color: var(--text-light);
+  margin-bottom: 1rem;
+}
+
+.startup-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.startup-stat {
+  padding: 0.85rem;
+  border-radius: 18px;
+  background: rgba(243, 247, 251, 0.9);
+  text-align: center;
+}
+
+.stat-value {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+}
+
+.stat-label {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.startup-detail-intro {
+  margin-bottom: 1rem;
+}
+
+.startup-detail-intro p {
+  color: var(--text-light);
+}
+
+.startup-detail-header {
+  background: rgba(243, 247, 251, 0.9);
+  border-radius: 22px;
+  padding: 1.2rem;
+  margin-bottom: 1.2rem;
+}
+
+.startup-detail-info {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.detail-item {
+  padding: 0.9rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.detail-label {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.detail-value {
+  margin-top: 0.3rem;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 700;
+}
+
+.founders {
+  padding: 1.1rem;
+  border: 1px solid rgba(18, 32, 51, 0.08);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.founder {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.9rem;
+}
+
+.founder-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, var(--primary-color), var(--secondary-color));
+  color: #fff;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 800;
+}
+
+.founder-name {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 700;
+}
+
+.founder-email {
+  color: var(--text-light);
+}
+
+@media (max-width: 1100px) {
+  .startups-grid,
+  .funding-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .startup-detail-info {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .startups-grid,
+  .funding-filters,
+  .startup-stats,
+  .startup-detail-info {
+    grid-template-columns: 1fr;
+  }
+}

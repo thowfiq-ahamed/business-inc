@@ -1,0 +1,115 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resources | Business Incubator</title>
+  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/resources.css">
+</head>
+<body class="site-shell">
+  <header class="site-header">
+    <nav class="navbar">
+      <div class="container">
+        <div class="navbar-brand"><a href="index.html"><img src="assets/images/logo.svg" alt="Business Incubator" class="logo-img"><span>Business Incubator</span></a></div>
+        <button id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+        <ul class="nav-menu" id="nav-menu">
+          <li><a href="index.html" data-nav>Home</a></li>
+          <li><a href="about.html" data-nav>About</a></li>
+          <li><a href="mentors.html" data-nav>Mentors</a></li>
+          <li><a href="funding.html" data-nav>Funding</a></li>
+          <li><a href="resources.html" data-nav>Resources</a></li>
+          <li><a href="faq.html" data-nav>FAQ</a></li>
+          <li class="nav-cta"><a href="login.html" id="auth-link" class="btn btn-ghost" data-nav>Login</a></li>
+          <li><a href="dashboard.html" id="dashboard-link" class="btn btn-primary" data-nav>Dashboard</a></li>
+          <li><a href="#" id="logout-link" class="btn btn-secondary" style="display: none;">Logout</a></li>
+        </ul>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="page-hero">
+      <div class="container page-hero-grid">
+        <div class="page-intro">
+          <span class="eyebrow">Resource library</span>
+          <h1>Curate the tools, guides, and templates founders actually return to.</h1>
+          <p>Featured collections, bookmarks, popularity signals, and better cards make the library feel more useful and much less like a placeholder list.</p>
+        </div>
+        <div class="page-intro-panel">
+          <ul class="highlight-list">
+            <li>Bookmark useful resources locally for quick return visits.</li>
+            <li>Filter by category, cost, and search terms.</li>
+            <li>Featured collections spotlight the most practical content.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <div class="container">
+        <div class="resource-collections">
+          <article class="resource-collection">
+            <div class="icon-badge">F</div>
+            <h3>Fundraising starter kit</h3>
+            <p>Deck structure, investor update formats, and capital planning material for first-time founders.</p>
+          </article>
+          <article class="resource-collection">
+            <div class="icon-badge">O</div>
+            <h3>Operator essentials</h3>
+            <p>Legal setup, early hiring, product decision frameworks, and customer discovery checklists.</p>
+          </article>
+          <article class="resource-collection">
+            <div class="icon-badge">G</div>
+            <h3>Growth playbooks</h3>
+            <p>Repeatable templates for messaging, positioning, retention, and experiment design.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <div class="container">
+        <section class="filter-section">
+          <div class="filters resources-filters">
+            <input type="text" id="search-resource" placeholder="Search resources">
+            <select id="filter-category">
+              <option value="">All categories</option>
+              <option value="funding">Funding</option>
+              <option value="tools">Tools</option>
+              <option value="education">Education</option>
+              <option value="legal">Legal</option>
+              <option value="technical">Technical</option>
+              <option value="marketing">Marketing</option>
+            </select>
+            <select id="filter-cost">
+              <option value="">All costs</option>
+              <option value="free">Free</option>
+              <option value="paid">Paid</option>
+              <option value="freemium">Freemium</option>
+            </select>
+            <select id="filter-bookmarked">
+              <option value="">All resources</option>
+              <option value="bookmarked">Bookmarked only</option>
+            </select>
+          </div>
+        </section>
+
+        <div id="resources-status"></div>
+        <section class="resources-grid" id="resources-grid"></section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-bottom"><span>&copy; <span data-current-year>2026</span> Business Incubator</span><span>Resource library now supports better discovery and return visits.</span></div>
+    </div>
+  </footer>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/resources.js"></script>
+</body>
+</html>
