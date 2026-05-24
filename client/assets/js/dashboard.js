@@ -26,8 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (currentUser.role === 'startup') {
     await loadStartupDashboard();
   } else if (currentUser.role === 'mentor') {
-    await loadMentorDashboard();
-    await loadMentorRequests();
+    await loadMentorDashboard();  // ✅ BUG 2 FIX: loadMentorRequests is called inside
+                                  // loadMentorDashboard now, so currentMentor is guaranteed set
   } else if (currentUser.role === 'investor') {
     await loadInvestorDashboard();
   } else if (currentUser.role === 'admin') {
@@ -164,9 +164,11 @@ async function loadStartupDashboard() {
 
   try {
     const response = await api.getAllStartups();
+
+    // ✅ BUG 3 FIX: also check _id in case JWT payload uses _id instead of id
     currentStartup = response.startups.find(startup => {
       const founderId = startup.founderId?._id || startup.founderId;
-      return founderId === currentUser.id;
+      return founderId === currentUser.id || founderId === currentUser._id;
     }) || null;
 
     if (!currentStartup) {
@@ -351,9 +353,11 @@ async function loadMentorDashboard() {
 
   try {
     const response = await api.getAllMentors();
+
+    // ✅ BUG 3 FIX: also check _id in case JWT payload uses _id instead of id
     currentMentor = response.mentors.find(mentor => {
       const mentorUserId = mentor.userId?._id || mentor.userId;
-      return mentorUserId === currentUser.id;
+      return mentorUserId === currentUser.id || mentorUserId === currentUser._id;
     }) || null;
 
     if (!currentMentor) {
@@ -361,6 +365,10 @@ async function loadMentorDashboard() {
       createBtn.style.display = 'inline-block';
       createBtn.textContent = 'Become a Mentor';
       createBtn.onclick = () => renderMentorForm();
+
+      // ✅ BUG 2 FIX: still call loadMentorRequests even when no profile exists,
+      // it will show the "create profile" message gracefully
+      await loadMentorRequests();
       return;
     }
 
@@ -393,6 +401,11 @@ async function loadMentorDashboard() {
     `;
 
     createBtn.style.display = 'none';
+
+    // ✅ BUG 2 FIX: loadMentorRequests moved INSIDE loadMentorDashboard so
+    // currentMentor is always fully set before requests are loaded
+    await loadMentorRequests();
+
   } catch (error) {
     renderEmptyState('mentor-info', `We could not load your mentor profile: ${error.message}`);
   }
@@ -459,8 +472,7 @@ async function submitMentorForm(e, mentorId = null) {
     }
 
     document.getElementById('mentor-form-container').innerHTML = '';
-    await loadMentorDashboard();
-    await loadMentorRequests();
+    await loadMentorDashboard(); // ✅ This now also calls loadMentorRequests internally
   } catch (error) {
     showNotice('mentor-form-status', error.message, 'error');
   }
@@ -482,6 +494,7 @@ async function editMentor(mentorId) {
 async function loadMentorRequests() {
   const requestsList = document.getElementById('requests-list');
 
+  // ✅ BUG 2 FIX: safe guard — currentMentor guaranteed set before this is called now
   if (!currentMentor) {
     renderEmptyState('requests-list', 'Create your mentor profile to receive requests.');
     return;
@@ -501,7 +514,7 @@ async function loadMentorRequests() {
     requestsList.innerHTML = requests
       .map(
         request => `
-          <div class="request-item">
+          <div class="request-item" id="request-${request._id}">
             <div class="request-header">
               <h3>${escapeHTML(request.startupId?.name || 'Unknown Startup')}</h3>
               <span class="request-status ${escapeHTML(request.status)}">${escapeHTML(request.status)}</span>
@@ -511,7 +524,7 @@ async function loadMentorRequests() {
             ${
               request.status === 'pending'
                 ? `
-                  <div class="section-actions">
+                  <div class="section-actions" id="request-actions-${request._id}">
                     <button class="btn btn-success" onclick="respondToRequest('${request._id}', 'accepted')">Accept</button>
                     <button class="btn btn-danger" onclick="respondToRequest('${request._id}', 'rejected')">Reject</button>
                   </div>
@@ -528,14 +541,27 @@ async function loadMentorRequests() {
 }
 
 async function respondToRequest(requestId, status) {
-  showNotice('requests-list', `Updating request status to ${status}...`, 'info');
+  // ✅ BUG 4 FIX: use a dedicated status element instead of overwriting the whole
+  // requests-list, so the success/error message is visible before the list reloads
+  const statusEl = document.getElementById(`request-actions-${requestId}`);
+  if (statusEl) {
+    statusEl.innerHTML = `<div class="notice info">Updating to ${escapeHTML(status)}...</div>`;
+  }
 
   try {
     await api.respondToRequest(requestId, status);
-    showNotice('requests-list', `Request ${status} successfully.`, 'success');
-    await loadMentorRequests();
+
+    // ✅ BUG 4 FIX: show success briefly, then reload the list after a short delay
+    if (statusEl) {
+      statusEl.innerHTML = `<div class="notice success">Request ${escapeHTML(status)} successfully.</div>`;
+    }
+    setTimeout(() => loadMentorRequests(), 1200);
   } catch (error) {
-    showNotice('requests-list', error.message, 'error');
+    if (statusEl) {
+      statusEl.innerHTML = `<div class="notice error">${escapeHTML(error.message)}</div>`;
+    } else {
+      renderEmptyState('requests-list', error.message);
+    }
   }
 }
 
