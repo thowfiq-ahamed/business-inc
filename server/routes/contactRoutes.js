@@ -20,11 +20,14 @@ router.post(
   }),
   contactController.createContactMessage
 );
-router.get('/', authMiddleware, roleMiddleware('admin'), contactController.getContactMessages);
+
+// ✅ BUG 11 FIX: changed roleMiddleware('admin') to roleMiddleware(['admin'])
+router.get('/', authMiddleware, roleMiddleware(['admin']), contactController.getContactMessages);
+
 router.patch(
   '/:id/status',
   authMiddleware,
-  roleMiddleware('admin'),
+  roleMiddleware(['admin']), // ✅ BUG 11 FIX: same fix here
   validateRequest({
     params: { id: rules.mongoId({ required: true }) },
     body: {
