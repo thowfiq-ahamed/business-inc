@@ -266,13 +266,34 @@ exports.forgotPassword = async (req, res, next) => {
     const resetUrl = getResetPasswordUrl(req, resetToken);
 
     if (process.env.NODE_ENV !== 'production') {
-      response.resetToken = resetToken;
-      response.resetUrl = resetUrl;
-      response.expiresInMinutes = expiresInMinutes;
-      console.log(`Password reset link for ${user.email}: ${resetUrl}`);
-    }
+  response.resetToken = resetToken;
+  response.resetUrl = resetUrl;
+  response.expiresInMinutes = expiresInMinutes;
+  console.log(`Password reset link for ${user.email}: ${resetUrl}`);
+}
 
-    return res.status(200).json(response);
+try {
+  await sendEmail({
+    to: user.email,
+    subject: 'Reset your Business Incubator password',
+    html: `
+      <h2>Password Reset Request</h2>
+      <p>You requested a password reset for your Business Incubator account.</p>
+      <p>This link expires in <strong>${expiresInMinutes} minutes</strong>.</p>
+      <a href="${resetUrl}"
+         style="display:inline-block;padding:10px 20px;background:#4f46e5;color:#fff;border-radius:6px;text-decoration:none;">
+        Reset Password
+      </a>
+      <p style="margin-top:16px;">Or copy this link into your browser:</p>
+      <p style="word-break:break-all;color:#4f46e5;">${resetUrl}</p>
+      <p style="margin-top:24px;color:#999;font-size:12px;">If you did not request this, ignore this email.</p>
+    `,
+  });
+} catch (emailError) {
+  console.error('Failed to send password reset email:', emailError.message);
+}
+
+return res.status(200).json(response);
   } catch (error) {
     next(error);
   }
