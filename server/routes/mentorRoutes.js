@@ -30,6 +30,21 @@ router.post(
   mentorController.createMentor
 );
 
+// ✅ FIXED: Moved ABOVE PUT /:id so Express doesn't treat "request" as a mentor ID
+// Respond to mentor request (protected)
+router.put(
+  '/request/:id',
+  authMiddleware,
+  roleMiddleware(['mentor', 'admin']),
+  validateRequest({
+    params: { id: rules.mongoId({ required: true }) },
+    body: {
+      status: rules.enum(['accepted', 'rejected', 'completed'], { required: true }),
+    },
+  }),
+  mentorController.respondToRequest
+);
+
 // Update mentor profile (protected)
 router.put(
   '/:id',
@@ -67,20 +82,6 @@ router.get(
   roleMiddleware(['mentor', 'admin']),
   validateRequest({ params: { id: rules.mongoId({ required: true }) } }),
   mentorController.getMentorRequests
-);
-
-// Respond to mentor request (protected)
-router.put(
-  '/request/:id',
-  authMiddleware,
-  roleMiddleware(['mentor', 'admin']),
-  validateRequest({
-    params: { id: rules.mongoId({ required: true }) },
-    body: {
-      status: rules.enum(['accepted', 'rejected', 'completed'], { required: true }),
-    },
-  }),
-  mentorController.respondToRequest
 );
 
 module.exports = router;
