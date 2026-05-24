@@ -1,12 +1,15 @@
 const Startup = require('../models/Startup');
 const Interest = require('../models/Interest');
+const User = require('../models/User');               // ✅ added
+const sendEmail = require('../utils/sendEmail');       // ✅ added
 
 // Express interest in a startup
 exports.expressInterest = async (req, res, next) => {
   try {
     const { startupId, note } = req.body;
 
-    const startup = await Startup.findById(startupId);
+    // ✅ populate founderId so we have founder name + email for notification
+    const startup = await Startup.findById(startupId).populate('founderId', 'name email');
     if (!startup) {
       return res.status(404).json({ message: 'Startup not found' });
     }
@@ -16,6 +19,34 @@ exports.expressInterest = async (req, res, next) => {
       { investorId: req.user.id, startupId, note: note || '', status: 'interested' },
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
+
+    // ✅ BUG 9 FIX: email the founder when an investor expresses interest
+    try {
+      const investor = await User.findById(req.user.id).select('name email');
+      await sendEmail({
+        to: startup.founderId.email,
+        subject: `An investor is interested in ${startup.name} — Business Incubator`,
+        html: `
+          <h2>Hi ${startup.founderId.name},</h2>
+          <p>Great news! <strong>${investor.name}</strong> has expressed interest in your startup <strong>${startup.name}</strong>.</p>
+          ${note ? `
+            <h3>Their note:</h3>
+            <blockquote style="border-left:4px solid #ccc;padding-left:16px;color:#555;">
+              ${note}
+            </blockquote>
+          ` : ''}
+          <p>Log in to your dashboard to see all investors interested in your startup.</p>
+          <a href="${process.env.CLIENT_ORIGIN}/dashboard.html"
+             style="display:inline-block;padding:10px 20px;background:#4f46e5;color:#fff;border-radius:6px;text-decoration:none;">
+            Open Dashboard
+          </a>
+          <p style="margin-top:24px;color:#999;font-size:12px;">Business Incubator — ${process.env.CLIENT_ORIGIN}</p>
+        `,
+      });
+    } catch (emailError) {
+      // Don't fail the interest save if email fails — just log it
+      console.error('Failed to send investor interest email:', emailError.message);
+    }
 
     res.status(200).json({
       message: 'Interest expressed successfully',
