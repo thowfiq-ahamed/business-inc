@@ -23,6 +23,15 @@ const startupUpdateRules = Object.fromEntries(
 // Get all startups
 router.get('/', startupController.getAllStartups);
 
+// ✅ BUG 9 FIX: must be BEFORE /:id to avoid "interests" being treated as an ID
+// Get investors interested in a specific startup (founder only)
+router.get(
+  '/:id/interests',
+  authMiddleware,
+  validateRequest({ params: { id: rules.mongoId({ required: true }) } }),
+  startupController.getStartupInterests
+);
+
 // Get startup by ID
 router.get('/:id', validateRequest({ params: { id: rules.mongoId({ required: true }) } }), startupController.getStartupById);
 
@@ -30,7 +39,7 @@ router.get('/:id', validateRequest({ params: { id: rules.mongoId({ required: tru
 router.post(
   '/',
   authMiddleware,
-  roleMiddleware('startup'),
+  roleMiddleware(['startup']), // ✅ also fixed array wrapping here
   validateRequest({ body: startupWriteRules }),
   startupController.createStartup
 );
@@ -50,6 +59,11 @@ router.put(
 );
 
 // Delete startup (protected)
-router.delete('/:id', authMiddleware, validateRequest({ params: { id: rules.mongoId({ required: true }) } }), startupController.deleteStartup);
+router.delete(
+  '/:id',
+  authMiddleware,
+  validateRequest({ params: { id: rules.mongoId({ required: true }) } }),
+  startupController.deleteStartup
+);
 
 module.exports = router;
