@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (currentUser.role === 'startup') {
     await loadStartupDashboard();
+    await loadInvestorInterests(); // ✅ BUG 10 FIX: load after startup is set
   } else if (currentUser.role === 'mentor') {
     await loadMentorDashboard();  // ✅ BUG 2 FIX: loadMentorRequests is called inside
                                   // loadMentorDashboard now, so currentMentor is guaranteed set
@@ -41,6 +42,7 @@ function toggleDashboardSections(role) {
     'mentor-dashboard': role === 'mentor',
     'investor-dashboard': role === 'investor',
     'mentor-requests': role === 'mentor',
+    'investor-interests': role === 'startup', // ✅ BUG 10 FIX: show to founders
   };
 
   Object.entries(visibilityMap).forEach(([id, isVisible]) => {
@@ -608,6 +610,43 @@ async function loadInvestorDashboard() {
   }
 }
 
+// ✅ BUG 10 FIX: show founders which investors are interested in their startup
+async function loadInvestorInterests() {
+  const list = document.getElementById('investor-interests-list');
+  if (!list) return;
+
+  if (!currentStartup) {
+    renderEmptyState('investor-interests-list', 'Create your startup profile to start receiving investor interest.');
+    return;
+  }
+
+  list.innerHTML = '<div class="loading-state">Loading investor interest...</div>';
+
+  try {
+    const response = await api.request(`/startups/${currentStartup._id}/interests`);
+    const interests = response.interests || [];
+
+    if (!interests.length) {
+      renderEmptyState('investor-interests-list', 'No investor interest yet. Make sure your startup profile is complete and visible on the funding board.');
+      return;
+    }
+
+    list.innerHTML = interests.map(interest => `
+      <div class="request-item">
+        <div class="request-header">
+          <h3>${escapeHTML(interest.investorId?.name || 'Unknown Investor')}</h3>
+          <span class="request-status accepted">${escapeHTML(interest.status)}</span>
+        </div>
+        <p class="muted">Email: ${escapeHTML(interest.investorId?.email || 'No email')}</p>
+        ${interest.note ? `<p>${escapeHTML(interest.note)}</p>` : '<p class="muted">No note left.</p>'}
+        <p class="muted" style="font-size:0.85rem;">Expressed interest: ${new Date(interest.updatedAt).toLocaleDateString()}</p>
+      </div>
+    `).join('');
+  } catch (error) {
+    renderEmptyState('investor-interests-list', `Could not load investor interest: ${error.message}`);
+  }
+}
+
 window.editStartup = editStartup;
 window.editMentor = editMentor;
 window.deleteStartupConfirm = deleteStartupConfirm;
@@ -615,3 +654,4 @@ window.deleteStartup = deleteStartup;
 window.cancelStartupForm = cancelStartupForm;
 window.cancelMentorForm = cancelMentorForm;
 window.respondToRequest = respondToRequest;
+window.loadInvestorInterests = loadInvestorInterests;
