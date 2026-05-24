@@ -1,4 +1,5 @@
 const Startup = require('../models/Startup');
+const Interest = require('../models/Interest'); // ✅ added
 
 // Get all startups
 exports.getAllStartups = async (req, res, next) => {
@@ -21,6 +22,29 @@ exports.getStartupById = async (req, res, next) => {
       return res.status(404).json({ message: 'Startup not found' });
     }
     res.status(200).json({ startup });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ✅ BUG 9 FIX: new endpoint — get all investors interested in a startup
+// Only the founder of that startup (or admin) can see this
+exports.getStartupInterests = async (req, res, next) => {
+  try {
+    const startup = await Startup.findById(req.params.id);
+    if (!startup) {
+      return res.status(404).json({ message: 'Startup not found' });
+    }
+
+    if (startup.founderId.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to view interests for this startup' });
+    }
+
+    const interests = await Interest.find({ startupId: req.params.id })
+      .populate('investorId', 'name email')
+      .sort({ updatedAt: -1 });
+
+    res.status(200).json({ interests });
   } catch (error) {
     next(error);
   }
@@ -53,14 +77,8 @@ exports.createStartup = async (req, res, next) => {
 exports.updateStartup = async (req, res, next) => {
   try {
     const allowedUpdates = [
-      'name',
-      'description',
-      'industry',
-      'stage',
-      'fundingNeeded',
-      'website',
-      'logo',
-      'teamSize',
+      'name', 'description', 'industry', 'stage',
+      'fundingNeeded', 'website', 'logo', 'teamSize',
     ];
     const updates = {};
 
