@@ -1,6 +1,8 @@
 const Mentor = require('../models/Mentor');
 const MentorRequest = require('../models/MentorRequest');
 const Startup = require('../models/Startup');
+const User = require('../models/User');                    // ✅ added
+const sendEmail = require('../utils/sendEmail');           // ✅ added
 
 // Get all mentors
 exports.getAllMentors = async (req, res, next) => {
@@ -89,7 +91,8 @@ exports.requestMentoring = async (req, res, next) => {
     const { startupId, message } = req.body;
     const mentorId = req.params.id;
 
-    const mentor = await Mentor.findById(mentorId);
+    // ✅ populate userId so we have mentor's name and email for the notification
+    const mentor = await Mentor.findById(mentorId).populate('userId', 'name email');
     if (!mentor) {
       return res.status(404).json({ message: 'Mentor not found' });
     }
@@ -119,6 +122,32 @@ exports.requestMentoring = async (req, res, next) => {
       startupFounderId: req.user.id,
       message,
     });
+
+    // ✅ EMAIL: notify mentor about the new request
+    // Wrapped in try/catch so a failed email never breaks the actual request
+    try {
+      const founder = await User.findById(req.user.id).select('name email');
+      await sendEmail({
+        to: mentor.userId.email,
+        subject: 'New Mentoring Request — Business Incubator',
+        html: `
+          <h2>Hi ${mentor.userId.name},</h2>
+          <p>You have a new mentoring request from <strong>${founder.name}</strong> for their startup <strong>${startup.name}</strong>.</p>
+          <h3>Their message:</h3>
+          <blockquote style="border-left:4px solid #ccc;padding-left:16px;color:#555;">
+            ${message}
+          </blockquote>
+          <p>Log in to your dashboard to accept or reject this request.</p>
+          <a href="${process.env.CLIENT_ORIGIN}/dashboard.html"
+             style="display:inline-block;padding:10px 20px;background:#4f46e5;color:#fff;border-radius:6px;text-decoration:none;">
+            Open Dashboard
+          </a>
+          <p style="margin-top:24px;color:#999;font-size:12px;">Business Incubator — ${process.env.CLIENT_ORIGIN}</p>
+        `,
+      });
+    } catch (emailError) {
+      console.error('Failed to send mentor request email:', emailError.message);
+    }
 
     res.status(201).json({ mentorRequest });
   } catch (error) {
@@ -157,17 +186,23 @@ exports.respondToRequest = async (req, res, next) => {
       return res.status(400).json({ message: 'Invalid request status' });
     }
 
-    const mentorRequest = await MentorRequest.findById(req.params.id);
+    // ✅ populate startupFounderId and startupId here so we have
+    // founder email + startup name ready for the notification email
+    const mentorRequest = await MentorRequest.findById(req.params.id)
+      .populate('startupFounderId', 'name email')
+      .populate('startupId', 'name');
     if (!mentorRequest) {
       return res.status(404).json({ message: 'Request not found' });
     }
 
-    const mentor = await Mentor.findById(mentorRequest.mentorId);
+    // ✅ populate userId so we have mentor name for the email
+    const mentor = await Mentor.findById(mentorRequest.mentorId)
+      .populate('userId', 'name email');
     if (!mentor) {
       return res.status(404).json({ message: 'Mentor not found' });
     }
 
-    if (mentor.userId.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (mentor.userId._id.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to respond to this request' });
     }
 
@@ -184,6 +219,38 @@ exports.respondToRequest = async (req, res, next) => {
       await Startup.findByIdAndUpdate(mentorRequest.startupId, {
         $addToSet: { mentors: mentor._id },
       });
+    }
+
+    // ✅ EMAIL: notify the founder about the mentor's decision
+    // Wrapped in try/catch so a failed email never breaks the response
+    try {
+      const founderEmail = mentorRequest.startupFounderId?.email;
+      const founderName = mentorRequest.startupFounderId?.name || 'Founder';
+      const startupName = mentorRequest.startupId?.name || 'your startup';
+
+      const statusMessages = {
+        accepted: `Great news! <strong>${mentor.userId.name}</strong> has <strong>accepted ✅</strong> your mentoring request for <strong>${startupName}</strong>.<br><br>You can now coordinate directly with your mentor.`,
+        rejected: `<strong>${mentor.userId.name}</strong> has <strong>declined ❌</strong> your mentoring request for <strong>${startupName}</strong>.<br><br>Don't be discouraged — you can browse other mentors and send a new request at any time.`,
+        completed: `Your mentoring session with <strong>${mentor.userId.name}</strong> for <strong>${startupName}</strong> has been marked as <strong>completed 🎉</strong>.<br><br>Thank you for using Business Incubator!`,
+      };
+
+      if (founderEmail) {
+        await sendEmail({
+          to: founderEmail,
+          subject: `Your Mentoring Request was ${status} — Business Incubator`,
+          html: `
+            <h2>Hi ${founderName},</h2>
+            <p>${statusMessages[status]}</p>
+            <a href="${process.env.CLIENT_ORIGIN}/dashboard.html"
+               style="display:inline-block;padding:10px 20px;background:#4f46e5;color:#fff;border-radius:6px;text-decoration:none;">
+              Open Dashboard
+            </a>
+            <p style="margin-top:24px;color:#999;font-size:12px;">Business Incubator — ${process.env.CLIENT_ORIGIN}</p>
+          `,
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send request response email:', emailError.message);
     }
 
     res.status(200).json({ mentorRequest: updatedRequest });
