@@ -253,7 +253,9 @@ async function requestMentoring() {
     const response = await api.getAllStartups();
     const userStartup = response.startups.find(startup => {
       const founderId = startup.founderId?._id || startup.founderId;
-      return founderId === user.id;
+      // ✅ BUG 8 FIX: check both user.id and user._id since JWT payload
+      // field name may differ depending on how the token was signed
+      return founderId === user.id || founderId === user._id;
     });
 
     if (!userStartup) {
