@@ -3,3 +3,12 @@ node_modules/
 *.log
 npm-debug.log*
 .DS_Store
+
+# Terraform
+terraform/.terraform/
+terraform/tfplan*
+*.tfstate
+*.tfstate.*
+
+# Security scan reports
+security/reports/

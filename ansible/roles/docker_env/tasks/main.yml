@@ -1,0 +1,12 @@
+---
+# Tasks for verifying Docker environment
+- name: "Ensure Docker CLI is operational"
+  command: docker info
+  changed_when: false
+  register: docker_info_result
+
+- name: "Ensure Docker network exists"
+  command: docker network inspect {{ network_name | default('business-inc-net') }}
+  register: net_check
+  failed_when: false
+  changed_when: false

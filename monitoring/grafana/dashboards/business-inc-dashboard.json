@@ -1,0 +1,219 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Application Availability",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "up{job=\"business-inc-app\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "title": "MongoDB Status",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "business_inc_mongodb_status",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "DISCONNECTED" }, "1": { "color": "green", "text": "CONNECTED" } }, "type": "value" }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "title": "Total HTTP Requests",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(business_inc_http_requests_total)",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "title": "Process Uptime (Hours)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "business_inc_process_uptime_seconds / 3600",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 5,
+      "title": "HTTP Request Rate (req/sec)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (method, status_code) (rate(business_inc_http_requests_total[1m]))",
+          "legendFormat": "{{method}} - {{status_code}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 6,
+      "title": "API Response Latency (p95 & p50)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(business_inc_http_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p95 Latency",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(business_inc_http_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p50 Latency",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 7,
+      "title": "Node.js Process Memory Utilization",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "business_inc_process_resident_memory_bytes",
+          "legendFormat": "Resident Memory (RSS)",
+          "refId": "A"
+        },
+        {
+          "expr": "business_inc_nodejs_heap_size_used_bytes",
+          "legendFormat": "Heap Used",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 8,
+      "title": "Process CPU Usage",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(business_inc_process_cpu_user_seconds_total[1m]) * 100",
+          "legendFormat": "User CPU %",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(business_inc_process_cpu_system_seconds_total[1m]) * 100",
+          "legendFormat": "System CPU %",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        }
+      }
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["business-inc", "devops", "monitoring"],
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "title": "Business Incubator - DevOps Monitoring",
+  "uid": "business-inc-dashboard",
+  "version": 1
+}

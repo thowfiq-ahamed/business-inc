@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const path = require('path');
 const connectDB = require('./config/db');
 const errorMiddleware = require('./middleware/errorMiddleware');
+const { register, metricsMiddleware } = require('./utils/metrics');
 
 // Load environment variables
 dotenv.config();
@@ -12,15 +13,20 @@ dotenv.config();
 connectDB();
 
 const app = express();
-// Force HTTPS in production
-if (process.env.NODE_ENV === 'production') {
+
+// Track HTTP metrics
+app.use(metricsMiddleware);
+
+// Force HTTPS in production if explicitly configured (e.g. cloud host with SSL proxy)
+if (process.env.NODE_ENV === 'production' && process.env.FORCE_HTTPS === 'true') {
   app.use((req, res, next) => {
-    if (req.headers['x-forwarded-proto'] !== 'https') {
+    if (req.headers['x-forwarded-proto'] && req.headers['x-forwarded-proto'] !== 'https') {
       return res.redirect('https://' + req.headers.host + req.url);
     }
     next();
   });
 }
+
 const clientDir = path.join(__dirname, '..', 'client');
 const allowedOrigins = (process.env.CLIENT_ORIGIN || '')
   .split(',')
@@ -65,7 +71,22 @@ app.use('/api/contact', contactRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ message: 'Server is running' });
+  res.status(200).json({
+    status: 'healthy',
+    message: 'Server is running',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Prometheus metrics endpoint
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (ex) {
+    res.status(500).end(ex);
+  }
 });
 
 // Static client
@@ -85,8 +106,11 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
-});
+let server;
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, () => {
+    console.log(`Server started on port ${PORT}`);
+  });
+}
 
 module.exports = app;

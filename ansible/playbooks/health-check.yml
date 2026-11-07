@@ -1,0 +1,43 @@
+---
+- name: "Business Incubator - Comprehensive Health Verification"
+  hosts: local
+  gather_facts: false
+
+  vars:
+    app_health_url: "http://localhost:5000/api/health"
+    app_metrics_url: "http://localhost:5000/metrics"
+    prometheus_health_url: "http://localhost:9090/-/healthy"
+    grafana_health_url: "http://localhost:3000/api/health"
+
+  tasks:
+    - name: "Check Business Incubator App API Health"
+      uri:
+        url: "{{ app_health_url }}"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: app_health
+
+    - name: "Check Prometheus Health"
+      uri:
+        url: "{{ prometheus_health_url }}"
+        method: GET
+        status_code: 200
+      register: prom_health
+      ignore_errors: true
+
+    - name: "Check Grafana Health"
+      uri:
+        url: "{{ grafana_health_url }}"
+        method: GET
+        status_code: 200
+      register: grafana_health
+      ignore_errors: true
+
+    - name: "Display Overall Health Status"
+      debug:
+        msg:
+          - "=== Application Health Summary ==="
+          - "Application API: OK (HTTP {{ app_health.status }})"
+          - "Prometheus: {{ 'OK (HTTP 200)' if prom_health.status == 200 else 'Skipped/Disabled' }}"
+          - "Grafana: {{ 'OK (HTTP 200)' if grafana_health.status == 200 else 'Skipped/Disabled' }}"

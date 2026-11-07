@@ -1,0 +1,30 @@
+# Prometheus Alerting Rule Manifest for Business Incubator Platform
+groups:
+  - name: business-inc-production-alerts
+    rules:
+      - alert: ServiceUnreachable
+        expr: up{job="business-inc-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Business Incubator Application Instance Down"
+          description: "Instance {{ $labels.instance }} has stopped reporting metrics for over 1 minute."
+
+      - alert: DatabaseConnectionFailure
+        expr: business_inc_mongodb_status == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MongoDB Connection Severed"
+          description: "Application is reporting disconnection from the MongoDB cluster."
+
+      - alert: ElevatedLatency500ms
+        expr: histogram_quantile(0.95, sum(rate(business_inc_http_request_duration_seconds_bucket[2m])) by (le)) > 0.5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API Latency Degradation"
+          description: "95th percentile request latency is exceeding 500ms for over 3 minutes."

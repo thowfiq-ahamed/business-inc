@@ -1,0 +1,38 @@
+groups:
+  - name: business-inc-alerts
+    rules:
+      - alert: AppDown
+        expr: up{job="business-inc-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Business Incubator Application is Down"
+          description: "The application service on app:5000 has stopped responding."
+
+      - alert: HighHttpErrorRate
+        expr: rate(business_inc_http_requests_total{status_code=~"5.."}[2m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP 5xx error rate detected"
+          description: "Over 5% of application requests are resulting in internal server errors."
+
+      - alert: HighResponseLatency
+        expr: histogram_quantile(0.95, sum(rate(business_inc_http_request_duration_seconds_bucket[2m])) by (le)) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API Response Latency"
+          description: "95th percentile response latency exceeded 1 second for 2 minutes."
+
+      - alert: MongoDbDisconnected
+        expr: business_inc_mongodb_status == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MongoDB Disconnected from Application"
+          description: "The Business Incubator application reports MongoDB connection state as disconnected."

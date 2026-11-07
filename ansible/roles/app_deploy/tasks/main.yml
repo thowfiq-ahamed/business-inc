@@ -1,0 +1,16 @@
+---
+# Tasks for managing application deployment
+- name: "Deploy application containers with Docker Compose"
+  command: docker compose up -d app
+  args:
+    chdir: "{{ project_root | default('.') }}"
+
+- name: "Verify HTTP response on health check endpoint"
+  uri:
+    url: "http://localhost:5000/api/health"
+    method: GET
+    status_code: 200
+  register: app_res
+  until: app_res.status == 200
+  retries: 10
+  delay: 3

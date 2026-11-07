@@ -1,0 +1,6 @@
+docker_host            = "npipe:////./pipe/docker_engine"
+network_name           = "business-inc-net"
+mongo_volume_name      = "business_inc_mongo_data"
+prometheus_volume_name = "business_inc_prometheus_data"
+grafana_volume_name    = "business_inc_grafana_data"
+environment            = "production"

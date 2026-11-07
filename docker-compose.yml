@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: business-inc:${APP_IMAGE_TAG:-latest}
     container_name: business-inc-app
     restart: unless-stopped
     ports:
@@ -13,15 +14,27 @@ services:
       NODE_ENV: production
       PORT: 5000
       MONGODB_URI: mongodb://mongo:27017/business-incubator
-      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
+      JWT_SECRET: ${JWT_SECRET:-devops-super-secure-production-secret-key-2026}
       JWT_EXPIRE: ${JWT_EXPIRE:-7d}
       RESET_PASSWORD_EXPIRE_MINUTES: ${RESET_PASSWORD_EXPIRE_MINUTES:-15}
       CLIENT_ORIGIN: ${CLIENT_ORIGIN:-http://localhost:5000}
+      FORCE_HTTPS: ${FORCE_HTTPS:-false}
     depends_on:
       mongo:
         condition: service_healthy
     networks:
       - business-inc-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 512M
 
   mongo:
     image: mongo:7-jammy
@@ -34,16 +47,112 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 15s
     networks:
       - business-inc-net
-    # Expose only on localhost for safety; remove in fully-isolated environments
     ports:
       - "27017:27017"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 512M
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: business-inc-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    networks:
+      - business-inc-net
+    depends_on:
+      - app
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: business-inc-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - business-inc-net
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: business-inc-cadvisor
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - business-inc-net
+    profiles:
+      - monitoring
+      - full
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: business-inc-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+    networks:
+      - business-inc-net
+    profiles:
+      - monitoring
+      - full
 
 volumes:
   mongo_data:
+    name: ${MONGO_VOLUME_NAME:-business_inc_mongo_data}
+  prometheus_data:
+    name: ${PROMETHEUS_VOLUME_NAME:-business_inc_prometheus_data}
+  grafana_data:
+    name: ${GRAFANA_VOLUME_NAME:-business_inc_grafana_data}
 
 networks:
   business-inc-net:
+    name: ${NETWORK_NAME:-business-inc-net}
     driver: bridge

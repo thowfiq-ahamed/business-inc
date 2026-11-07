@@ -1,0 +1,16 @@
+# Trivy DevSecOps Security Configuration
+severity:
+  - HIGH
+  - CRITICAL
+
+ignore-unfixed: true
+
+format: table
+
+exit-code: 0 # Set to 1 in strict environments to block builds on critical vulnerabilities
+
+scan:
+  scanners:
+    - vuln
+    - secret
+    - config

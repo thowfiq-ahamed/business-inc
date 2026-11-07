@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  jenkins:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
+    image: business-inc-jenkins:lts
+    container_name: business-inc-jenkins
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+      - "50000:50000"
+    environment:
+      - JENKINS_OPTS=--httpPort=8080
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - business-inc-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+
+volumes:
+  jenkins_data:
+    name: business_inc_jenkins_data
+
+networks:
+  business-inc-net:
+    external: true
+    name: business-inc-net

@@ -1,0 +1,64 @@
+---
+- name: "Business Incubator - Host Environment Preparation"
+  hosts: local
+  gather_facts: true
+
+  vars:
+    project_root: "{{ playbook_dir }}/../.."
+    required_directories:
+      - "{{ project_root }}/monitoring/prometheus"
+      - "{{ project_root }}/monitoring/grafana/provisioning/datasources"
+      - "{{ project_root }}/monitoring/grafana/provisioning/dashboards"
+      - "{{ project_root }}/monitoring/grafana/dashboards"
+
+  tasks:
+    - name: "Verify Docker CLI is available on host"
+      command: docker --version
+      register: docker_check
+      changed_when: false
+      failed_when: docker_check.rc != 0
+
+    - name: "Display Docker Version"
+      debug:
+        msg: "Docker is available: {{ docker_check.stdout }}"
+
+    - name: "Verify Docker Compose is available"
+      command: docker compose version
+      register: compose_check
+      changed_when: false
+      failed_when: compose_check.rc != 0
+
+    - name: "Display Docker Compose Version"
+      debug:
+        msg: "Docker Compose is available: {{ compose_check.stdout }}"
+
+    - name: "Ensure required project directories exist"
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop: "{{ required_directories }}"
+
+    - name: "Check if .env file exists in server directory"
+      stat:
+        path: "{{ project_root }}/server/.env"
+      register: server_env_stat
+
+    - name: "Create default server/.env from template if missing"
+      copy:
+        src: "{{ project_root }}/server/.env.example"
+        dest: "{{ project_root }}/server/.env"
+        mode: '0600'
+      when: not server_env_stat.stat.exists
+
+    - name: "Check if root .env file exists"
+      stat:
+        path: "{{ project_root }}/.env"
+      register: root_env_stat
+
+    - name: "Create default root .env from template if missing"
+      copy:
+        src: "{{ project_root }}/.env.example"
+        dest: "{{ project_root }}/.env"
+        mode: '0600'
+      when: not root_env_stat.stat.exists

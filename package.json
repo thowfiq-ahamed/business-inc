@@ -8,6 +8,10 @@
     "dev": "npm --prefix server run dev",
     "seed": "npm --prefix server run seed",
     "admin:create": "npm --prefix server run admin:create",
-    "install:server": "npm --prefix server install"
+    "install:server": "npm --prefix server install",
+    "test": "npm --prefix server test"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.1"
   }
 }

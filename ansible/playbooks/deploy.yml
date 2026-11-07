@@ -1,0 +1,51 @@
+---
+- name: "Business Incubator - Application Deployment"
+  hosts: local
+  gather_facts: false
+
+  vars:
+    project_root: "{{ playbook_dir }}/../.."
+    app_port: 5000
+    health_url: "http://localhost:{{ app_port }}/api/health"
+    metrics_url: "http://localhost:{{ app_port }}/metrics"
+    app_image_tag: "{{ lookup('env', 'APP_IMAGE_TAG') | default('latest', true) }}"
+
+  tasks:
+    - name: "Validate Docker Compose configuration"
+      command: docker compose config
+      args:
+        chdir: "{{ project_root }}"
+      changed_when: false
+      register: compose_config
+
+    - name: "Build and deploy containers with Docker Compose"
+      command: docker compose up -d --build
+      args:
+        chdir: "{{ project_root }}"
+      environment:
+        APP_IMAGE_TAG: "{{ app_image_tag }}"
+
+    - name: "Wait for Application service to report healthy"
+      uri:
+        url: "{{ health_url }}"
+        method: GET
+        status_code: 200
+      register: health_result
+      until: health_result.status == 200
+      retries: 15
+      delay: 3
+
+    - name: "Verify Prometheus Metrics endpoint"
+      uri:
+        url: "{{ metrics_url }}"
+        method: GET
+        status_code: 200
+      register: metrics_result
+
+    - name: "Deployment Verification Summary"
+      debug:
+        msg:
+          - "Deployment SUCCESSFUL!"
+          - "Application Status: {{ health_result.json.status | default('running') }}"
+          - "Metrics Endpoint: Verified (HTTP 200)"
+          - "Image Tag: {{ app_image_tag }}"

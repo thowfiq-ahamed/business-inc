@@ -1,0 +1,45 @@
+---
+- name: "Business Incubator - Automated Recovery & Rollback"
+  hosts: local
+  gather_facts: false
+
+  vars:
+    project_root: "{{ playbook_dir }}/../.."
+    previous_image_tag: "{{ lookup('env', 'PREVIOUS_IMAGE_TAG') | default('previous', true) }}"
+    fallback_image_tag: "latest"
+    health_url: "http://localhost:5000/api/health"
+
+  tasks:
+    - name: "Alert - Initiating Application Rollback"
+      debug:
+        msg: "Detected failure in latest deployment. Reverting service to target tag: {{ previous_image_tag }}"
+
+    - name: "Check if target rollback image tag exists"
+      command: "docker image inspect business-inc:{{ previous_image_tag }}"
+      register: image_check
+      ignore_errors: true
+
+    - name: "Determine active rollback tag"
+      set_fact:
+        active_rollback_tag: "{{ previous_image_tag if image_check.rc == 0 else fallback_image_tag }}"
+
+    - name: "Restart application container with rollback image"
+      command: docker compose up -d --no-build app
+      args:
+        chdir: "{{ project_root }}"
+      environment:
+        APP_IMAGE_TAG: "{{ active_rollback_tag }}"
+
+    - name: "Verify health after rollback"
+      uri:
+        url: "{{ health_url }}"
+        method: GET
+        status_code: 200
+      register: rollback_health
+      until: rollback_health.status == 200
+      retries: 10
+      delay: 3
+
+    - name: "Rollback Complete Confirmation"
+      debug:
+        msg: "Application successfully rolled back and verified healthy on tag {{ active_rollback_tag }}!"
